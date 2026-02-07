@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>NEON DASH: ULTIMATE</title>
+    <style>
+        :root { --p: #00ffcc; --bg: #030508; --panel: rgba(10, 15, 25, 0.98); }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: var(--bg); font-family: 'Segoe UI', sans-serif; color: white; user-select: none; position: fixed; width: 100%; height: 100%; }
+        canvas { display: block; touch-action: none; width: 100vw; height: 100vh; }
+        .overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.85); z-index: 100; backdrop-filter: blur(10px); }
+        .panel { background: var(--panel); border: 2px solid var(--p); padding: 25px; border-radius: 20px; text-align: center; width: 85%; max-width: 320px; }
+        .btn { background: var(--p); color: #000; border: none; padding: 12px 0; border-radius: 10px; font-size: 16px; font-weight: 800; cursor: pointer; width: 100%; margin: 8px 0; text-transform: uppercase; transition: 0.2s; -webkit-tap-highlight-color: transparent; }
+        .btn-sec { background: rgba(255,255,255,0.05); color: white; border: 1px solid rgba(255,255,255,0.2); }
+        #prog-bar { position: absolute; top: 25px; left: 50%; transform: translateX(-50%); width: 60%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden; z-index: 10; }
+        #prog-fill { height: 100%; width: 0%; background: var(--p); box-shadow: 0 0 15px var(--p); }
+        #lvl-info { position: absolute; bottom: 80px; width: 100%; text-align: center; font-size: 22px; font-weight: 900; opacity: 0; transition: 0.5s; color: var(--p); text-shadow: 0 0 10px var(--p); pointer-events: none; }
+        .hidden { display: none !important; }
+        #pause-btn { position: absolute; top: 20px; right: 20px; width: 45px; height: 45px; background: var(--panel); border: 1px solid var(--p); color: var(--p); border-radius: 10px; z-index: 50; cursor: pointer; font-weight: bold; }
+        .lvl-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 15px 0; max-height: 250px; overflow-y: auto; padding: 5px; }
+        .lvl-item { aspect-ratio: 1; background: rgba(255,255,255,0.05); border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid #333; transition: 0.3s; font-weight: bold; }
+        .unlocked { border-color: var(--p); color: var(--p); box-shadow: inset 0 0 8px rgba(0,255,204,0.2); }
+    </style>
+</head>
+<body>
+    <div id="prog-bar"><div id="prog-fill"></div></div>
+    <div id="lvl-info">LEVEL NAME</div>
+    <button id="pause-btn" class="hidden" onclick="Game.togglePause()">II</button>
+
+    <div id="mainMenu" class="overlay">
+        <div class="panel">
+            <h1 id="ui-title">NEON DASH</h1>
+            <p id="ui-best">BEST: LEVEL 1</p>
+            <button class="btn" id="ui-play" onclick="Game.start(Game.maxLevel)">PLAY</button>
+            <button class="btn btn-sec" id="ui-levels" onclick="UI.show('levelsMenu')">LEVELS</button>
+            <button class="btn btn-sec" id="ui-settings" onclick="UI.show('settingsMenu')">SETTINGS</button>
+        </div>
+    </div>
+
+    <div id="levelsMenu" class="overlay hidden">
+        <div class="panel">
+            <h2 id="ui-select">SELECT LEVEL</h2>
+            <div id="lvl-grid" class="lvl-grid"></div>
+            <button class="btn" id="ui-back" onclick="UI.show('mainMenu')">BACK</button>
+        </div>
+    </div>
+
+    <div id="settingsMenu" class="overlay hidden">
+        <div class="panel">
+            <h2 id="ui-sets-title">SETTINGS</h2>
+            <button class="btn btn-sec" onclick="UI.nextLang()" id="lang-btn">LANGUAGE: EN</button>
+            <button class="btn" style="background:#ff3b3b; color:white;" id="ui-reset" onclick="Game.reset()">RESET PROGRESS</button>
+            <button class="btn" id="ui-back2" onclick="UI.show('mainMenu')">BACK</button>
+        </div>
+    </div>
+
+    <div id="pauseMenu" class="overlay hidden">
+        <div class="panel">
+            <h2 id="ui-paused">PAUSED</h2>
+            <button class="btn" id="ui-resume" onclick="Game.togglePause()">RESUME</button>
+            <button class="btn btn-sec" id="ui-restart" onclick="Game.start(Game.level)">RESTART</button>
+            <button class="btn btn-sec" id="ui-quit" style="color:#ff3b3b;" onclick="Game.quit()">QUIT</button>
+        </div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+<script>
+const Langs = {
+    EN: { title: "NEON DASH", play: "PLAY", levels: "LEVELS", settings: "SETTINGS", select: "SELECT LEVEL", back: "BACK", reset: "RESET PROGRESS", paused: "PAUSED", resume: "RESUME", restart: "RESTART", quit: "QUIT", best: "BEST: LEVEL ", setsTitle: "SETTINGS" },
+    AR: { title: "نيون داش", play: "لعب", levels: "المستويات", settings: "الإعدادات", select: "اختر المستوى", back: "رجوع", reset: "مسح التقدم", paused: "توقف مؤقت", resume: "استئناف", restart: "إعادة", quit: "خروج", best: "أفضل مستوى: ", setsTitle: "الإعدادات" },
+    FR: { title: "NEON DASH", play: "JOUER", levels: "NIVEAUX", settings: "OPTIONS", select: "NIVEAUX", back: "RETOUR", reset: "RÉINITIALISER", paused: "PAUSE", resume: "REPRENDRE", restart: "REJOUER", quit: "QUITTER", best: "MEILLEUR: NIVEAU ", setsTitle: "OPTIONS" }
+};
+
+let curLang = localStorage.getItem('nd_lang') || 'EN';
+const LevelData = Array.from({length: 30}, (_, i) => {
+    let lvl = i + 1;
+    let speed = 9.5 + (lvl * 0.42);
+    let mode = lvl % 3 === 0 ? "ship" : (lvl % 3 === 1 ? "cube" : "gravity");
+    let map = lvl < 3 ? "S.B.S.B.S" : "SSS.B.SSS.P.S.SSS.G.SSS.B.SSS.SSS.G.SSS.P.SSS";
+    if (lvl > 20) speed = Math.min(speed + 1.5, 20); 
+    return { name: lvl > 20 ? "DEMON " + lvl : (lvl > 10 ? "HARD " + lvl : "LEVEL " + lvl), mode, color: `hsl(${lvl * 18}, 100%, 50%)`, speed, map };
+});
+
+const Game = {
+    canvas: document.getElementById('gameCanvas'),
+    ctx: document.getElementById('gameCanvas').getContext('2d'),
+    active: false, paused: false, level: 1, deathCount: 0,
+    maxLevel: parseInt(localStorage.getItem('nd_max')) || 1,
+    scrollX: 0, gravity: 1.5,
+    player: { x: 150, y: 0, w: 34, h: 34, vy: 0, rot: 0, gSign: 1, mode: "cube" },
+    objects: [], particles: [],
+
+    init() {
+        this.resize(); window.onresize = () => this.resize();
+        UI.updateTexts(); UI.buildLevels(); this.loop();
+    },
+
+    resize() { this.w = window.innerWidth; this.h = window.innerHeight; this.canvas.width = this.w; this.canvas.height = this.h; },
+
+    start(lvlNum) {
+        let lIdx = lvlNum - 1;
+        const cfg = LevelData[lIdx];
+        this.level = lvlNum; this.player.mode = cfg.mode; this.player.gSign = 1; this.speed = cfg.speed; this.curColor = cfg.color;
+        document.documentElement.style.setProperty('--p', cfg.color);
+        this.objects = []; this.particles = []; let x = 800;
+        cfg.map.split('.').forEach(
